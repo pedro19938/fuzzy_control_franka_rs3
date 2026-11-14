@@ -130,9 +130,3 @@ Everything is set in `fuzzy_control/configs/` — no changes to `core/` are need
 | `V_MAX` | output velocity range |
 | `CONJUNTOS_ENTRADA`, `CONJUNTOS_SAIDA` | membership functions, as `("triangulo", (a, b, c))` or `("trapezio", (a, b, c, d))` |
 | `REGRAS` | list of `(input set, output set)` pairs |
-
-## Next steps
-
-- Two-input fuzzy controller (error and change of error), the fuzzy equivalent of a PD
-- End-effector orientation control
-- Comparison against a classical P/PD controller
