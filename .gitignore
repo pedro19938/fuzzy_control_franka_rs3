@@ -1,0 +1,9 @@
+# ambiente virtual do Python (centenas de MB, cada um recria o seu)
+fuzzy/
+
+# cache gerado automaticamente pelo Python
+__pycache__/
+*.pyc
+
+# log de erros do MuJoCo
+MUJOCO_LOG.TXT
