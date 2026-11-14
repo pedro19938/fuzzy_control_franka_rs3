@@ -1,11 +1,11 @@
 """
-Roda o controle fuzzy do EE do Franka FR3 com o viewer do MuJoCo.
+Runs the fuzzy EE control of the Franka FR3 with the MuJoCo viewer.
 
     fuzzy/bin/python runner.py
 
-Configurações: fuzzy_control/configs/
-  - trajetória (pontos / lissajous) e feedforward: sim_config.py
-  - conjuntos e regras fuzzy: fuzzy_rules.py
+Configs: fuzzy_control/configs/
+  - trajectory (waypoints / lissajous) and feedforward: sim_config.py
+  - fuzzy sets and rules: fuzzy_rules.py
 """
 # imports
 import signal
@@ -19,78 +19,78 @@ import numpy as np
 
 from fuzzy_control.configs import sim_config as cfg
 from fuzzy_control.core.ee_controller import EEFuzzyController
-from fuzzy_control.core.trajectories import criar_trajetoria
-from fuzzy_control.utils.viewer_utils import (Rastro, criar_marcador, desenhar_caminho,
-                                              esperar_tempo_real, mover_marcador)
+from fuzzy_control.core.trajectories import make_trajectory
+from fuzzy_control.utils.viewer_utils import (Trail, create_marker, draw_path,
+                                              move_marker, wait_real_time)
 
-PASSOS_POR_FRAME_RASTRO = 20  # atualiza o rastro a cada 20 passos (25 Hz)
+STEPS_PER_TRAIL_FRAME = 20  # updates the trail every 20 steps (25 Hz)
 
-# funcao auxiliar para encerrar o loop de controle com ctrl+c
-def instalar_ctrl_c():
-    
-    parar = threading.Event()
+# helper function to stop the control loop with ctrl+c
+def install_ctrl_c():
 
-    def ao_apertar(sig, frame):
-        print("\nCtrl+C: encerrando... (aperte de novo para forçar)")
-        parar.set()
-        signal.signal(signal.SIGINT, signal.SIG_DFL)  # próximo Ctrl+C mata direto
+    stop = threading.Event()
 
-    signal.signal(signal.SIGINT, ao_apertar)
-    return parar
+    def on_press(sig, frame):
+        print("\nCtrl+C: shutting down... (press again to force)")
+        stop.set()
+        signal.signal(signal.SIGINT, signal.SIG_DFL)  # next Ctrl+C kills immediately
+
+    signal.signal(signal.SIGINT, on_press)
+    return stop
 
 
 def main() -> None:
-    # modelo mujoco
-    model = mm.load(cfg.MODELO)
+    # mujoco model
+    model = mm.load(cfg.MODEL)
     data = mujoco.MjData(model)
-    
-    # resetar para a pose inicial do keyframe
-    mujoco.mj_resetDataKeyframe(model, data, cfg.KEYFRAME_INICIAL)
+
+    # reset to the initial keyframe pose
+    mujoco.mj_resetDataKeyframe(model, data, cfg.INITIAL_KEYFRAME)
     mujoco.mj_forward(model, data)
 
-    # controlador fuzzy
-    controlador = EEFuzzyController(model, data)
-    trajetoria = criar_trajetoria(cfg)
+    # fuzzy controller
+    controller = EEFuzzyController(model, data)
+    trajectory = make_trajectory(cfg)
 
-    # numero de passos para o rastro (duração / timestep)
-    n_rastro = int(cfg.DURACAO_RASTRO / (model.opt.timestep * PASSOS_POR_FRAME_RASTRO))
-    parar = instalar_ctrl_c()
+    # number of steps for the trail (duration / timestep)
+    n_trail = int(cfg.TRAIL_DURATION / (model.opt.timestep * STEPS_PER_TRAIL_FRAME))
+    stop = install_ctrl_c()
 
-    # Loop principal
+    # Main loop
     with mujoco.viewer.launch_passive(model, data) as viewer:
-        
-        # inicializa os marcadores visuais no viwer (trajetoria, rastro, alvo)
+
+        # initializes the visual markers in the viewer (trajectory, trail, target)
         with viewer.lock():
-            criar_marcador(viewer, trajetoria(0.0)[0], cfg.RAIO_MARCADOR, cfg.COR_MARCADOR)
-            desenhar_caminho(viewer, trajetoria.caminho(), cfg.COR_CAMINHO)
-            rastro = Rastro(viewer, n_rastro, cfg.COR_RASTRO)
+            create_marker(viewer, trajectory(0.0)[0], cfg.MARKER_RADIUS, cfg.MARKER_COLOR)
+            draw_path(viewer, trajectory.path(), cfg.PATH_COLOR)
+            trail = Trail(viewer, n_trail, cfg.TRAIL_COLOR)
 
-        # Loop de controle
-        passo = 0
-        ultimo_print = 0.0
-        while viewer.is_running() and not parar.is_set():
-            inicio = time.time()
+        # Control loop
+        step = 0
+        last_print = 0.0
+        while viewer.is_running() and not stop.is_set():
+            start = time.time()
 
-            alvo, vel_alvo = trajetoria(data.time)
-            erro = controlador.passo(alvo, vel_alvo)
+            target, target_vel = trajectory(data.time)
+            error = controller.step(target, target_vel)
             mujoco.mj_step(model, data)
-            passo += 1
+            step += 1
 
-            # atualiza o viewer
+            # updates the viewer
             with viewer.lock():
-                mover_marcador(viewer, alvo)
-                if passo % PASSOS_POR_FRAME_RASTRO == 0:
-                    rastro.adicionar(controlador.posicao_ee())
+                move_marker(viewer, target)
+                if step % STEPS_PER_TRAIL_FRAME == 0:
+                    trail.add(controller.ee_position())
             viewer.sync()
 
-            # printa o erro a cada cfg.INTERVALO_PRINT segundos
-            if data.time - ultimo_print >= cfg.INTERVALO_PRINT:
-                ultimo_print = data.time
-                print(f"t={data.time:5.1f}s  erro (mm) = {np.round(erro * 1000, 1)}"
-                      f"  |erro| = {np.linalg.norm(erro) * 1000:5.1f} mm")
+            # prints the error every cfg.PRINT_INTERVAL seconds
+            if data.time - last_print >= cfg.PRINT_INTERVAL:
+                last_print = data.time
+                print(f"t={data.time:5.1f}s  error (mm) = {np.round(error * 1000, 1)}"
+                      f"  |error| = {np.linalg.norm(error) * 1000:5.1f} mm")
 
-            # roda na frequencia real (model.opt.timestep)
-            esperar_tempo_real(inicio, model.opt.timestep)
+            # runs at real-time rate (model.opt.timestep)
+            wait_real_time(start, model.opt.timestep)
 
 # main
 if __name__ == "__main__":

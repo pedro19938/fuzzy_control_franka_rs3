@@ -37,12 +37,12 @@ trajectory(t) ──► position error (x, y, z) ──► FUZZY (per axis) ─�
 | Aggregation | `max` |
 | Defuzzification | centroid over a 501-point discretized output universe |
 
-Linguistic labels: **NG** negative big · **NP** negative small · **ZE** zero ·
-**PP** positive small · **PG** positive big.
+Linguistic labels: **NB** negative big · **NS** negative small · **ZE** zero ·
+**PS** positive small · **PB** positive big.
 
-| IF error is | NG | NP | ZE | PP | PG |
+| IF error is | NB | NS | ZE | PS | PB |
 |---|---|---|---|---|---|
-| **THEN velocity is** | NG | NP | ZE | PP | PG |
+| **THEN velocity is** | NB | NS | ZE | PS | PB |
 
 Sets, rules and their meaning are documented in
 [`fuzzy_control/configs/fuzzy_rules.py`](fuzzy_control/configs/fuzzy_rules.py).
@@ -115,12 +115,12 @@ Everything is set in `fuzzy_control/configs/` — no changes to `core/` are need
 
 | Parameter | Description |
 |---|---|
-| `TRAJETORIA` | `"lissajous"` or `"pontos"` (fixed waypoints) |
-| `USAR_FEEDFORWARD` | add the trajectory velocity to the fuzzy output |
+| `TRAJECTORY` | `"lissajous"` or `"waypoints"` |
+| `USE_FEEDFORWARD` | add the trajectory velocity to the fuzzy output |
 | `LISSAJOUS` | center, amplitude, frequency and phase per axis |
-| `ALVOS`, `TEMPO_POR_ALVO` | waypoints and how long to stay at each one |
+| `WAYPOINTS`, `TIME_PER_WAYPOINT` | waypoints and how long to stay at each one |
 | `LAMBDA_DLS` | damping of the Jacobian pseudo-inverse |
-| `GANHO_ESPACO_NULO` | pull towards the home posture (0 disables it) |
+| `NULLSPACE_GAIN` | pull towards the home posture (0 disables it) |
 
 **`fuzzy_rules.py`**
 
@@ -128,5 +128,5 @@ Everything is set in `fuzzy_control/configs/` — no changes to `core/` are need
 |---|---|
 | `E_MAX` | error at which the input sets saturate (smaller = more aggressive) |
 | `V_MAX` | output velocity range |
-| `CONJUNTOS_ENTRADA`, `CONJUNTOS_SAIDA` | membership functions, as `("triangulo", (a, b, c))` or `("trapezio", (a, b, c, d))` |
-| `REGRAS` | list of `(input set, output set)` pairs |
+| `INPUT_SETS`, `OUTPUT_SETS` | membership functions, as `("triangle", (a, b, c))` or `("trapezoid", (a, b, c, d))` |
+| `RULES` | list of `(input set, output set)` pairs |

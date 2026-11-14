@@ -1,59 +1,59 @@
 """
-Controlador fuzzy Mamdani de 1 entrada e 1 saída (SISO).
+Mamdani fuzzy controller with 1 input and 1 output (SISO).
 
-As 4 etapas:
-  1. Fuzzificação   -> grau do erro em cada conjunto (NG, NP, ZE, PP, PG)
-  2. Regras          -> força de cada regra = grau do seu antecedente
-  3. Agregação       -> corta cada conjunto de saída na força da regra (min)
-                        e une todos (max)
-  4. Defuzzificação  -> centroide da forma agregada = número final
+The 4 stages:
+  1. Fuzzification   -> degree of the error in each set (NB, NS, ZE, PS, PB)
+  2. Rules           -> strength of each rule = degree of its antecedent
+  3. Aggregation     -> clips each output set at the rule strength (min)
+                        and joins them all (max)
+  4. Defuzzification -> centroid of the aggregated shape = final number
 """
 
 import numpy as np
 
 from fuzzy_control.configs import fuzzy_rules as cfg
-from fuzzy_control.core.membership import criar_funcao
+from fuzzy_control.core.membership import make_function
 
 
 class FuzzySISO:
-    def __init__(self, conjuntos_entrada=None, conjuntos_saida=None, regras=None,
-                 v_max=None, n_pontos=None):
-        # configs em configs/fuzzy_rules.py
-        
-        # conjuntos de entrada, saida e regras 
-        conjuntos_entrada = conjuntos_entrada or cfg.CONJUNTOS_ENTRADA
-        conjuntos_saida = conjuntos_saida or cfg.CONJUNTOS_SAIDA
-        self.regras = regras or cfg.REGRAS
-        
-        # V_max permitida e número de pontos para avaliar a saída
+    def __init__(self, input_sets=None, output_sets=None, rules=None,
+                 v_max=None, n_points=None):
+        # configs in configs/fuzzy_rules.py
+
+        # input sets, output sets and rules
+        input_sets = input_sets or cfg.INPUT_SETS
+        output_sets = output_sets or cfg.OUTPUT_SETS
+        self.rules = rules or cfg.RULES
+
+        # allowed V_max and number of points to evaluate the output
         v_max = v_max or cfg.V_MAX
-        n_pontos = n_pontos or cfg.N_PONTOS_SAIDA
-        
-        # cria funções de pertinência para cada conjunto de entrada e saída
-        self.entrada = {nome: criar_funcao(*mf) for nome, mf in conjuntos_entrada.items()}
+        n_points = n_points or cfg.N_OUTPUT_POINTS
 
-        # A saída é avaliada uma vez só, num universo discreto
-        self.v = np.linspace(-v_max, v_max, n_pontos)
-        self.saida = {nome: criar_funcao(*mf)(self.v) for nome, mf in conjuntos_saida.items()}
+        # creates membership functions for each input and output set
+        self.inputs = {name: make_function(*mf) for name, mf in input_sets.items()}
 
-    def fuzzificar(self, erro):
-        """Etapa 1: {conjunto: grau} para um valor de erro."""
-        return {nome: float(mf(erro)) for nome, mf in self.entrada.items()}
+        # The output is evaluated only once, on a discrete universe
+        self.v = np.linspace(-v_max, v_max, n_points)
+        self.outputs = {name: make_function(*mf)(self.v) for name, mf in output_sets.items()}
 
-    def calcular(self, erro, detalhes=False):
-        """Etapas 1 a 4: erro (m) -> velocidade (m/s)."""
-        graus = self.fuzzificar(erro)
+    def fuzzify(self, error):
+        """Stage 1: {set: degree} for an error value."""
+        return {name: float(mf(error)) for name, mf in self.inputs.items()}
 
-        agregado = np.zeros_like(self.v)
-        for se, entao in self.regras:
-            forca = graus[se]                               # etapa 2
-            cortado = np.minimum(forca, self.saida[entao])  # implicação (min)
-            agregado = np.maximum(agregado, cortado)        # etapa 3 (max)
+    def compute(self, error, details=False):
+        """Stages 1 to 4: error (m) -> velocity (m/s)."""
+        degrees = self.fuzzify(error)
 
-        # defuzzyficação: centroide da forma agregada
-        area = agregado.sum()
-        v = 0.0 if area == 0 else float((self.v * agregado).sum() / area)  # etapa 4
+        aggregated = np.zeros_like(self.v)
+        for if_set, then_set in self.rules:
+            strength = degrees[if_set]                              # stage 2
+            clipped = np.minimum(strength, self.outputs[then_set])  # implication (min)
+            aggregated = np.maximum(aggregated, clipped)            # stage 3 (max)
 
-        if detalhes:
-            return v, graus, agregado
+        # defuzzification: centroid of the aggregated shape
+        area = aggregated.sum()
+        v = 0.0 if area == 0 else float((self.v * aggregated).sum() / area)  # stage 4
+
+        if details:
+            return v, degrees, aggregated
         return v

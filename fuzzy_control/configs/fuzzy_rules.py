@@ -1,71 +1,71 @@
 r"""
-Configs Controlador Fuzzy
+Fuzzy Controller Configs
 =================================
-  
-arquivo de definicao do controlador fuzzy:
-  1. os conjuntos da ENTRADA (erro de posição, em metros)
-  2. os conjuntos da SAÍDA   (velocidade do EE, em m/s)
-  3. as REGRAS que ligam entrada -> saída
 
-Nomes dos conjuntos (linguísticos):
-  NG = Negativo Grande    NP = Negativo Pequeno    ZE = Zero
-  PP = Positivo Pequeno   PG = Positivo Grande
+fuzzy controller definition file:
+  1. the INPUT sets  (position error, in meters)
+  2. the OUTPUT sets (EE velocity, in m/s)
+  3. the RULES that link input -> output
+
+Set names (linguistic):
+  NB = Negative Big    NS = Negative Small    ZE = Zero
+  PS = Positive Small  PB = Positive Big
 
 """
 
 INF = float("inf")
 
 # ---------------------------------------------------------------------------
-# 1. ENTRADA: erro = alvo - posição atual do EE  [m]
+# 1. INPUT: error = target - current EE position  [m]
 # ---------------------------------------------------------------------------
-# E_MAX: valor maximo de erro antes de considerarmos longe.
-# Diminuir E_MAX deixa o controle mais agressivo
-# Aumentar deixa mais suave.
+# E_MAX: maximum error value before we consider it far.
+# Decreasing E_MAX makes the control more aggressive
+# Increasing makes it smoother.
 
 E_MAX = 0.30
 
-CONJUNTOS_ENTRADA = {
-    # Erro muito negativo: o alvo está bem "atrás" no eixo. 
-    # Satura em -E_MAX.
-    "NG": ("trapezio",  (-INF, -INF, -E_MAX, -E_MAX / 2)),
-    # Erro negativo moderado.
-    "NP": ("triangulo", (-E_MAX, -E_MAX / 2, 0.0)),
-    # Praticamente no alvo. 
-    # A LARGURA deste conjunto define a "suavidade"
-    # perto do alvo: mais largo -> chegada mais lenta e suave.
-    "ZE": ("triangulo", (-E_MAX / 2, 0.0, E_MAX / 2)),
-    # Erro positivo moderado.
-    "PP": ("triangulo", (0.0, E_MAX / 2, E_MAX)),
-    # Erro muito positivo: o alvo está bem "à frente". 
-    # Satura em +E_MAX.
-    "PG": ("trapezio",  (E_MAX / 2, E_MAX, INF, INF)),
+INPUT_SETS = {
+    # Very negative error: the target is well "behind" on the axis.
+    # Saturates at -E_MAX.
+    "NB": ("trapezoid", (-INF, -INF, -E_MAX, -E_MAX / 2)),
+    # Moderate negative error.
+    "NS": ("triangle",  (-E_MAX, -E_MAX / 2, 0.0)),
+    # Practically at the target.
+    # The WIDTH of this set defines the "smoothness"
+    # near the target: wider -> slower, smoother arrival.
+    "ZE": ("triangle",  (-E_MAX / 2, 0.0, E_MAX / 2)),
+    # Moderate positive error.
+    "PS": ("triangle",  (0.0, E_MAX / 2, E_MAX)),
+    # Very positive error: the target is well "ahead".
+    # Saturates at +E_MAX.
+    "PB": ("trapezoid", (E_MAX / 2, E_MAX, INF, INF)),
 }
 
 # ---------------------------------------------------------------------------
-# 2. SAÍDA: velocidade cartesiana do EE no eixo  [m/s]
+# 2. OUTPUT: Cartesian EE velocity along the axis  [m/s]
 # ---------------------------------------------------------------------------
-# V_MAX: maior velocidade que o fuzzy pode pedir.
+# V_MAX: highest velocity the fuzzy can request.
 V_MAX = 1.0
 
-# Quantos pontos usar para discretizar a saída no cálculo do centroide.
-# Mais pontos = mais preciso, mas mais lento.
-N_PONTOS_SAIDA = 501
+# How many points to use to discretize the output for the centroid computation.
+# More points = more precise, but slower.
+N_OUTPUT_POINTS = 501
 
-CONJUNTOS_SAIDA = {
-    "NG": ("triangulo", (-V_MAX, -V_MAX, -V_MAX / 2)),   # ré rápida
-    "NP": ("triangulo", (-V_MAX, -V_MAX / 2, 0.0)),      # ré devagar
-    "ZE": ("triangulo", (-V_MAX / 2, 0.0, V_MAX / 2)),   # parado
-    "PP": ("triangulo", (0.0, V_MAX / 2, V_MAX)),        # frente devagar
-    "PG": ("triangulo", (V_MAX / 2, V_MAX, V_MAX)),      # frente rápida
+OUTPUT_SETS = {
+    "NB": ("triangle", (-V_MAX, -V_MAX, -V_MAX / 2)),   # fast backward
+    "NS": ("triangle", (-V_MAX, -V_MAX / 2, 0.0)),      # slow backward
+    "ZE": ("triangle", (-V_MAX / 2, 0.0, V_MAX / 2)),   # stopped
+    "PS": ("triangle", (0.0, V_MAX / 2, V_MAX)),        # slow forward
+    "PB": ("triangle", (V_MAX / 2, V_MAX, V_MAX)),      # fast forward
 }
 
 # ---------------------------------------------------------------------------
-# 3. REGRAS:  SE erro é <A>  ENTÃO velocidade é <B>
+# 3. RULES:  IF error is <A>  THEN velocity is <B>
 # ---------------------------------------------------------------------------
-REGRAS = [
-    ("NG", "NG"),  # alvo muito atrás    -> ré rápida
-    ("NP", "NP"),  # alvo um pouco atrás -> ré devagar
-    ("ZE", "ZE"),  # no alvo             -> parado
-    ("PP", "PP"),  # alvo um pouco à frente -> frente devagar
-    ("PG", "PG"),  # alvo muito à frente    -> frente rápida
+RULES = [
+    ("NB", "NB"),  # target far behind      -> fast backward
+    ("NS", "NS"),  # target slightly behind -> slow backward
+    ("ZE", "ZE"),  # at the target          -> stopped
+    ("PS", "PS"),  # target slightly ahead  -> slow forward
+    ("PB", "PB"),  # target far ahead       -> fast forward
 ]
