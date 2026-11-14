@@ -83,8 +83,8 @@ Requires Python 3.12. The robot model is downloaded automatically by
 [`mujoco-menagerie`](https://github.com/google-deepmind/mujoco_menagerie) on first run.
 
 ```bash
-git clone git@github.com:pedro19938/fuzzy_control_frank_rs3.git
-cd fuzzy_control_frank_rs3
+git clone git@github.com:pedro19938/fuzzy_control_franka_rs3.git
+cd fuzzy_control_franka_rs3
 python3 -m venv fuzzy
 fuzzy/bin/pip install -r requirements.txt
 ```
